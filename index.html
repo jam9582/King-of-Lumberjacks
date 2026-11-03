@@ -19,7 +19,8 @@
   .left { display: flex; gap: 10px; align-items: center; }
   button.icon { pointer-events: auto; margin: 0; padding: 0; width: 52px; height: 52px; font-size: 20px; letter-spacing: 2px; background: rgba(255,255,255,.88); color: #3b2a1a; box-shadow: 0 3px 0 rgba(0,0,0,.12); }
   button.icon.hidden { display: none; }
-  button.sub { background: #8a7a68; box-shadow: 0 4px 0 #5a4c3e; margin-left: 8px; }
+  button.sub { background: #8a7a68; box-shadow: 0 4px 0 #5a4c3e; }
+  .btns { display: flex; flex-wrap: wrap; justify-content: center; gap: 0 8px; }
 
   @media (max-width: 560px) {
     .hud-top { top: max(10px, env(safe-area-inset-top)); left: 10px; right: 10px; gap: 6px; }
@@ -66,8 +67,8 @@
   #startScreen .card { max-height: calc(100dvh - 32px); overflow-y: auto; touch-action: pan-y; }
   .result-row { display: flex; justify-content: space-between; gap: 24px; font-size: 18px; margin: 8px 0; }
   .result-row b { font-size: 22px; }
-  .result-row .best { display: flex; flex-direction: column; align-items: flex-end; }
-  .result-row .best small { font-size: 13px; opacity: .7; font-weight: 700; }
+  .rhead { margin: 16px 0 4px; font-size: 14px; color: #a9461a; text-align: left; border-bottom: 2px solid #f0e2c8; padding-bottom: 4px; }
+  .result-row.best b { color: #e08a00; }
   #newbest { color: #e08a00; font-weight: 900; margin-top: 6px; }
   button { font: inherit; font-size: 20px; font-weight: 800; border: 0; border-radius: 14px; padding: 12px 28px; background: #e8743b; color: #fff; cursor: pointer; box-shadow: 0 4px 0 #a9461a; margin-top: 16px; }
   button:active { transform: translateY(3px); box-shadow: 0 1px 0 #a9461a; }
@@ -119,16 +120,23 @@
   <div class="card">
     <h1>일시정지</h1>
     <p class="how">ESC 키로도 멈추고 다시 할 수 있어요</p>
-    <button id="resumeBtn">계속하기</button><button id="restartBtn" class="sub">처음부터</button>
+    <div class="btns">
+      <button id="resumeBtn">계속하기</button>
+      <button id="restartBtn" class="sub">처음부터</button>
+      <button id="quitBtn" class="sub">그만두기</button>
+    </div>
   </div>
 </div>
 
 <div class="screen hidden" id="resultScreen">
   <div class="card">
     <h1>시간 종료!</h1>
+    <h3 class="rhead">이번 판</h3>
     <div class="result-row"><span>쓰러트린 나무</span><b id="rTrees">0</b></div>
     <div class="result-row"><span>데미지 총합</span><b id="rDmg">0</b></div>
-    <div class="result-row"><span>최고 기록</span><span class="best"><b id="rBest">0</b><small id="rBestDmg"></small></span></div>
+    <h3 class="rhead">기존 최고 기록</h3>
+    <div class="result-row best"><span>쓰러트린 나무</span><b id="rBest">0</b></div>
+    <div class="result-row best"><span>데미지 총합</span><b id="rBestDmg">0</b></div>
     <div id="newbest"></div>
     <button id="retryBtn">다시 하기</button>
   </div>

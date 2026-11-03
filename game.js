@@ -384,17 +384,40 @@ function resumeGame() {
   $('pauseScreen').classList.add('hidden');
 }
 
+// 그만두기: 판을 정리하고 시작(설명) 화면으로 돌아감. 기록은 저장하지 않음
+function quitGame() {
+  game.running = false;
+  game.paused = false;
+  if (actx) actx.resume();
+  if (tree) scene.remove(tree.obj);
+  tree = null;
+  for (const t of fallingTrees) scene.remove(t.obj);
+  fallingTrees.length = 0;
+  clearPile();
+  swingT = -1;
+  axePivot.rotation.y = AXE_REST;
+  game.time = CONFIG.duration;
+  game.trees = 0;
+  game.damage = 0;
+  updateHud();
+  updateHpBar();
+  $('pauseScreen').classList.add('hidden');
+  $('pauseBtn').classList.add('hidden');
+  $('startScreen').classList.remove('hidden');
+}
+
 function endGame() {
   game.running = false;
   $('pauseBtn').classList.add('hidden');
-  let best = readBest();
+  const best = readBest();   // 이번 판 전까지의 기록
   // 나무를 더 많이 쓰러트렸거나, 같으면 데미지가 더 높을 때 갱신
   const isNew = game.trees > 0 && (game.trees > best.trees || (game.trees === best.trees && game.damage > best.damage));
-  if (isNew) { best = { trees: game.trees, damage: game.damage }; writeBest(best); }
+  if (isNew) writeBest({ trees: game.trees, damage: game.damage });
   $('rTrees').textContent = game.trees + '그루';
   $('rDmg').textContent = game.damage.toLocaleString();
-  $('rBest').textContent = best.trees + '그루';
-  $('rBestDmg').textContent = '데미지 ' + best.damage.toLocaleString();
+  // 결과 화면엔 '기존' 최고 기록을 보여줌. 기록이 없으면 '-' (예전 버전 기록은 데미지가 없어서 '-')
+  $('rBest').textContent = best.trees ? best.trees + '그루' : '-';
+  $('rBestDmg').textContent = best.damage ? best.damage.toLocaleString() : '-';
   $('newbest').textContent = isNew ? '🎉 최고 기록 갱신!' : '';
   sfx.end();
   if (isNew) {
@@ -792,6 +815,7 @@ $('retryBtn').addEventListener('click', startGame);
 $('pauseBtn').addEventListener('click', pauseGame);
 $('resumeBtn').addEventListener('click', resumeGame);
 $('restartBtn').addEventListener('click', startGame);
+$('quitBtn').addEventListener('click', quitGame);
 addEventListener('keydown', (e) => {
   if (e.key === 'Escape' || e.key === 'p' || e.key === 'P') game.paused ? resumeGame() : pauseGame();
 });
