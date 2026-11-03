@@ -13,6 +13,7 @@ const CONFIG = {
 
 const params = new URLSearchParams(location.search);
 if (params.has('dur')) CONFIG.duration = Number(params.get('dur'));
+if (params.has('hp')) { CONFIG.baseHp = Number(params.get('hp')); CONFIG.hpPerTree = 0; }
 
 const SURVIVAL = 'assets/kenney_survival-kit/Models/GLB%20format/';
 const TREE_FILES = ['tree.glb', 'tree-tall.glb', 'tree-autumn.glb', 'tree-autumn-tall.glb'];
@@ -40,7 +41,7 @@ const CAM_POS = CAM_BASE.clone();
 // 세로로 긴 화면(폰)이면 카메라를 뒤로 빼서 나무와 도끼가 다 보이게 함
 function fitCamera() {
   camera.aspect = innerWidth / innerHeight;
-  const k = Math.max(1, 0.7 / camera.aspect);
+  const k = Math.max(1, 0.85 / camera.aspect);
   CAM_POS.copy(CAM_BASE).sub(CAM_TARGET).multiplyScalar(k).add(CAM_TARGET);
   scene.fog.near = 18 * k;
   scene.fog.far = 34 * k;
@@ -160,6 +161,7 @@ const sfx = {
     tone(1320, 0.35, { type: 'triangle', vol: 0.12, delay: 0.02 }); tone(1980, 0.4, { type: 'triangle', vol: 0.08, delay: 0.06 });
   },
   fall() { noise(0.7, { freq: 900, to: 150, filter: 'lowpass', vol: 0.3 }); },
+  log() { tone(260, 0.12, { type: 'triangle', vol: 0.25, to: 150 }); noise(0.08, { freq: 700, q: 2, vol: 0.2 }); },
   thud() { tone(90, 0.35, { vol: 0.5, to: 40 }); noise(0.3, { freq: 300, filter: 'lowpass', vol: 0.4 }); },
   pop() { tone(320, 0.14, { vol: 0.2, to: 900 }); tone(1200, 0.12, { type: 'triangle', vol: 0.06, delay: 0.08 }); },
   tick() { tone(1050, 0.06, { type: 'square', vol: 0.06 }); },
@@ -344,6 +346,9 @@ function startGame() {
   game.damage = 0;
   game.lastTick = 99;
   if (tree) scene.remove(tree.obj);
+  for (const t of fallingTrees) scene.remove(t.obj);
+  fallingTrees.length = 0;
+  clearPile();
   tree = null;
   spawnTree();
   $('startScreen').classList.add('hidden');
@@ -517,6 +522,7 @@ function fellTree() {
   t.state = 'fall';
   t.t = 0;
   t.landed = false;
+  t.pileIndex = game.trees - 1;
   setTreeFlash(t, 0);
   // 맞은 반대쪽으로 쓰러짐
   t.fallDir = new THREE.Vector3(-Math.cos(aimAngle), 0, Math.sin(aimAngle));
@@ -569,12 +575,14 @@ function placeDecor(templates) {
   const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
   const list = templates.filter(Boolean);
   if (!list.length) return;
-  for (let i = 0; i < 30; i++) {
+  for (let i = 0; i < 40; i++) {
     const tpl = list[Math.floor(rnd() * list.length)];
     const a = rnd() * Math.PI * 2;
     const r = 4.6 + rnd() * 3.8;
+    const x = Math.cos(a) * r, z = Math.sin(a) * r;
+    if (Math.abs(x) < 5.8 && z < -1.8 && z > -6.4) continue;   // 통나무 더미 자리는 비워둠
     const o = tpl.clone();
-    o.position.set(Math.cos(a) * r, 0, Math.sin(a) * r);
+    o.position.set(x, 0, z);
     o.rotation.y = rnd() * Math.PI * 2;
     o.scale.setScalar(1.4 + rnd() * 0.8);
     if (o.getObjectByProperty('isMesh', true)) {
@@ -582,6 +590,78 @@ function placeDecor(templates) {
       if (box.min.y < 0) o.position.y -= box.min.y;  // 통나무처럼 땅 아래로 파묻힌 모델 보정
     }
     scene.add(o);
+  }
+}
+
+// ===== 통나무 더미 (쓰러트린 나무 수만큼 쌓임) =====
+const PILE_Z = -3.8;              // 나무 뒤쪽(화면 위쪽)
+const PILE_XS = [-3.3, 3.3, 0];   // 나무에 가리지 않게 왼쪽 뒤부터. 꽉 차면 오른쪽, 가운데 순
+const PILE_ROWS = 5;              // 맨 아래 5개, 위로 갈수록 1개씩 줄어서 한 더미에 15개
+const PER_PILE = PILE_ROWS * (PILE_ROWS + 1) / 2;
+const LOG_SCALE = 2.2;
+const LOG_W = 0.6;                // 통나무 지름 (모델 0.26 x LOG_SCALE + 여유)
+let logTemplate = null;
+const pileLogs = [];
+
+function fallbackLog() {
+  const g = new THREE.Group();
+  const m = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 1, 7), new THREE.MeshStandardMaterial({ color: 0xa8683a, flatShading: true }));
+  m.rotation.x = Math.PI / 2;
+  m.castShadow = true;
+  g.add(m);
+  return g;
+}
+
+// n번째 통나무가 놓일 자리
+function pileSlot(n) {
+  const p = Math.floor(n / PER_PILE);
+  if (p >= PILE_XS.length) return null;   // 45개 넘으면 더 안 쌓음
+  let i = n % PER_PILE, row = 0;
+  while (i >= PILE_ROWS - row) { i -= PILE_ROWS - row; row++; }
+  const count = PILE_ROWS - row;
+  // 통나무는 화면 가로로 눕히고, 앞뒤(z)로 나란히 쌓음
+  return new THREE.Vector3(PILE_XS[p], 0.11 * LOG_SCALE + row * LOG_W * 0.85, PILE_Z + (i - (count - 1) / 2) * LOG_W);
+}
+
+function sendLogToPile(index, from) {
+  const to = pileSlot(index);
+  if (!to) return;
+  const obj = logTemplate ? logTemplate.clone() : fallbackLog();
+  obj.scale.setScalar(LOG_SCALE);
+  obj.position.copy(from);
+  scene.add(obj);
+  pileLogs.push({ obj, from: from.clone(), to, yaw: (Math.random() - 0.5) * 0.15, t: 0, landed: false });
+}
+
+function clearPile() {
+  for (const l of pileLogs) scene.remove(l.obj);
+  pileLogs.length = 0;
+}
+
+const FLY_TIME = 0.55;
+function updateLogs(dt) {
+  for (const l of pileLogs) {
+    if (l.t > FLY_TIME + 0.3) continue;   // 다 쌓인 통나무는 그대로
+    l.t += dt;
+    const k = Math.min(1, l.t / FLY_TIME);
+    // 포물선으로 날아가며 빙글빙글
+    l.obj.position.lerpVectors(l.from, l.to, k);
+    l.obj.position.y += Math.sin(k * Math.PI) * 2.5;
+    l.obj.rotation.set((1 - k) * Math.PI * 2, Math.PI / 2 + l.yaw + (1 - k) * Math.PI, 0);
+    if (k >= 1) {
+      if (!l.landed) {
+        l.landed = true;
+        sfx.log();
+        shake = Math.max(shake, 0.06);
+        burst({ count: 8, pos: l.to, speed: [0.5, 1.5], up: 1, gravity: 0.5, drag: 3, life: [0.4, 0.8], size: [0.2, 0.35], colors: DUST, geo: 'dust', grow: 1 });
+        burst({ count: 6, pos: l.to, dir: new THREE.Vector3(0, 1, 0), spread: 0.8, speed: [2, 4], gravity: 12, life: [0.4, 0.7], size: [0.08, 0.14], colors: WOOD });
+        showFloat(l.to.clone().setY(l.to.y + 1), '+1', 'normal', true);
+      }
+      // 착지할 때 살짝 찌그러졌다 돌아옴
+      const b = (l.t - FLY_TIME) / 0.3;
+      const sq = Math.sin(Math.min(1, b) * Math.PI) * 0.18;
+      l.obj.scale.set(LOG_SCALE * (1 + sq), LOG_SCALE * (1 - sq), LOG_SCALE * (1 + sq * 0.3));
+    }
   }
 }
 
@@ -671,6 +751,8 @@ function tick() {
     }
     t.obj.quaternion.copy(t.startQuat).premultiply(new THREE.Quaternion().setFromAxisAngle(t.fallAxis, ang));
     if (t.t > 1.3) {
+      // 줄어들기 시작할 때 통나무가 더미로 날아감
+      if (!t.logSent) { t.logSent = true; sendLogToPile(t.pileIndex, t.fallDir.clone().multiplyScalar(2).setY(0.6)); }
       t.obj.scale.multiplyScalar(Math.exp(-8 * dt));
       t.obj.position.y -= dt * 0.8;
     }
@@ -679,6 +761,7 @@ function tick() {
 
   updateParticles(dt);
   updateRings(dt);
+  updateLogs(dt);
 
   // 화면 흔들림
   shake = Math.max(0, shake - realDt * 1.2);
@@ -714,6 +797,7 @@ const [axeModel, decor, ...trees] = await Promise.all([
 trees.forEach((t, i) => { if (t) t.userData.autumn = TREE_FILES[i].includes('autumn'); });
 treeTemplates = trees.filter(Boolean);
 placeDecor(decor);
+logTemplate = decor[DECOR_FILES.indexOf('tree-log.glb')];
 const axe = axeModel || fallbackAxe();
 // 모델은 손잡이가 +Y로 서 있고 날이 -X쪽. 눕혀서 손잡이가 -Z(나무 옆)로 향하게 함
 axe.scale.setScalar(AXE_SCALE);
