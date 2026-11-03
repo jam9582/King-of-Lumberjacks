@@ -386,7 +386,7 @@ function resumeGame() {
   $('pauseScreen').classList.add('hidden');
 }
 
-// 그만두기: 판을 정리하고 시작(설명) 화면으로 돌아감. 기록은 저장하지 않음
+// 처음부터: 판을 정리하고 시작(룰 설명) 화면으로 돌아감. 기록은 저장하지 않음
 function quitGame() {
   game.running = false;
   game.paused = false;
@@ -816,8 +816,7 @@ $('startBtn').addEventListener('click', startGame);
 $('retryBtn').addEventListener('click', startGame);
 $('pauseBtn').addEventListener('click', pauseGame);
 $('resumeBtn').addEventListener('click', resumeGame);
-$('restartBtn').addEventListener('click', startGame);
-$('quitBtn').addEventListener('click', quitGame);
+$('restartBtn').addEventListener('click', quitGame);   // 처음부터 = 룰 설명 화면부터 다시
 addEventListener('keydown', (e) => {
   if (e.key === 'Escape' || e.key === 'p' || e.key === 'P') game.paused ? resumeGame() : pauseGame();
 });
