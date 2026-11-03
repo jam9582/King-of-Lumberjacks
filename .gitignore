@@ -1,0 +1,10 @@
+.DS_Store
+
+# 에셋은 게임에서 쓰는 서바이벌 킷 GLB만 올림 (나머지는 로컬에만 보관)
+assets/*
+!assets/kenney_survival-kit/
+assets/kenney_survival-kit/*
+!assets/kenney_survival-kit/License.txt
+!assets/kenney_survival-kit/Models/
+assets/kenney_survival-kit/Models/*
+!assets/kenney_survival-kit/Models/GLB format/

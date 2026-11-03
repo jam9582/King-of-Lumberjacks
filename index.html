@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>60초 나무꾼</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #9fd6e8; font-family: -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; touch-action: none; overscroll-behavior: none; }
+  canvas { display: block; }
+
+  #hud { position: fixed; inset: 0; pointer-events: none; }
+  .hud-top { position: absolute; top: 16px; left: 16px; right: 16px; display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+  .pill { background: rgba(255,255,255,.88); border-radius: 14px; padding: 8px 16px; box-shadow: 0 3px 0 rgba(0,0,0,.12); color: #3b2a1a; font-weight: 800; }
+  .pill small { display: block; font-size: 11px; font-weight: 700; opacity: .6; }
+  .pill b { font-size: 26px; }
+  #time.low b { color: #e0402a; }
+  .stats { display: flex; gap: 10px; }
+  .left { display: flex; gap: 10px; align-items: center; }
+  button.icon { pointer-events: auto; margin: 0; padding: 0; width: 52px; height: 52px; font-size: 20px; letter-spacing: 2px; background: rgba(255,255,255,.88); color: #3b2a1a; box-shadow: 0 3px 0 rgba(0,0,0,.12); }
+  button.icon.hidden { display: none; }
+  button.sub { background: #8a7a68; box-shadow: 0 4px 0 #5a4c3e; margin-left: 8px; }
+
+  @media (max-width: 560px) {
+    .hud-top { top: max(10px, env(safe-area-inset-top)); left: 10px; right: 10px; gap: 6px; }
+    .left, .stats { gap: 6px; }
+    .pill { padding: 6px 10px; border-radius: 12px; }
+    .pill small { font-size: 10px; }
+    .pill b { font-size: 20px; }
+    button.icon { width: 44px; height: 44px; font-size: 16px; }
+    #hpwrap { top: calc(max(10px, env(safe-area-inset-top)) + 62px) !important; }
+    .card { padding: 22px 20px; }
+    .card h1 { font-size: 28px; }
+  }
+  #hpwrap { position: absolute; top: 90px; left: 50%; transform: translateX(-50%); width: min(320px, 70vw); }
+  #hpbar { height: 16px; background: rgba(0,0,0,.25); border-radius: 8px; overflow: hidden; border: 2px solid rgba(255,255,255,.8); }
+  #hpfill { height: 100%; width: 100%; background: linear-gradient(#8be36a, #4caf3a); transition: width .12s; }
+  #hptext { text-align: center; color: #fff; font-weight: 800; font-size: 13px; text-shadow: 0 1px 2px rgba(0,0,0,.5); margin-top: 3px; }
+
+  .float { position: absolute; transform: translate(-50%, -50%); font-weight: 900; white-space: nowrap; text-shadow: 0 2px 0 rgba(0,0,0,.35), 0 0 6px rgba(0,0,0,.25); pointer-events: none; }
+  .float.crit { text-shadow: 0 3px 0 #b45a00, 0 0 18px rgba(255,200,40,.9); }
+
+  .bump { display: inline-block; animation: bump .25s ease-out; }
+  @keyframes bump { 0% { transform: scale(1); } 40% { transform: scale(1.35); } 100% { transform: scale(1); } }
+
+  #flash { position: fixed; inset: 0; pointer-events: none; opacity: 0; background: radial-gradient(ellipse at center, rgba(255,230,120,0) 40%, rgba(255,200,40,.55) 100%); }
+  #flash.on { animation: flash .35s ease-out; }
+  @keyframes flash { 0% { opacity: 1; } 100% { opacity: 0; } }
+
+  .screen { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(30, 50, 30, .45); }
+  .screen.hidden { display: none; }
+  .card { background: #fffaf0; border-radius: 22px; padding: 28px 32px; text-align: center; max-width: min(420px, calc(100vw - 32px)); box-shadow: 0 8px 0 rgba(0,0,0,.15); color: #3b2a1a; }
+  .card h1 { margin: 0 0 8px; font-size: 34px; }
+  .card p { margin: 6px 0; }
+  .card .how { margin: 14px 0 20px; font-size: 15px; opacity: .8; }
+  .result-row { display: flex; justify-content: space-between; gap: 24px; font-size: 18px; margin: 8px 0; }
+  .result-row b { font-size: 22px; }
+  #newbest { color: #e08a00; font-weight: 900; margin-top: 6px; }
+  button { font: inherit; font-size: 20px; font-weight: 800; border: 0; border-radius: 14px; padding: 12px 28px; background: #e8743b; color: #fff; cursor: pointer; box-shadow: 0 4px 0 #a9461a; margin-top: 16px; }
+  button:active { transform: translateY(3px); box-shadow: 0 1px 0 #a9461a; }
+  button:disabled { opacity: .5; cursor: default; }
+</style>
+</head>
+<body>
+<div id="hud">
+  <div class="hud-top">
+    <div class="left">
+      <div class="pill" id="time"><small>남은 시간</small><b id="timeVal">60.0</b></div>
+      <button id="pauseBtn" class="icon hidden" title="일시정지 (ESC)">II</button>
+    </div>
+    <div class="stats">
+      <div class="pill"><small>쓰러트린 나무</small><b id="treesVal">0</b></div>
+      <div class="pill"><small>데미지 총합</small><b id="dmgVal">0</b></div>
+    </div>
+  </div>
+  <div id="hpwrap"><div id="hpbar"><div id="hpfill"></div></div><div id="hptext">100 / 100</div></div>
+  <div id="floats"></div>
+</div>
+<div id="flash"></div>
+
+<div class="screen" id="startScreen">
+  <div class="card">
+    <h1>🪓 60초 나무꾼</h1>
+    <p>60초 동안 나무를 최대한 많이 쓰러트리세요!</p>
+    <p class="how">마우스로 도끼를 돌리고 클릭! 폰은 찍을 곳을 터치! (느낌표 3개 = 약점)</p>
+    <button id="startBtn" disabled>불러오는 중...</button>
+  </div>
+</div>
+
+<div class="screen hidden" id="pauseScreen">
+  <div class="card">
+    <h1>일시정지</h1>
+    <p class="how">ESC 키로도 멈추고 다시 할 수 있어요</p>
+    <button id="resumeBtn">계속하기</button><button id="restartBtn" class="sub">처음부터</button>
+  </div>
+</div>
+
+<div class="screen hidden" id="resultScreen">
+  <div class="card">
+    <h1>시간 종료!</h1>
+    <div class="result-row"><span>쓰러트린 나무</span><b id="rTrees">0</b></div>
+    <div class="result-row"><span>데미지 총합</span><b id="rDmg">0</b></div>
+    <div class="result-row"><span>최고 기록</span><b id="rBest">0</b></div>
+    <div id="newbest"></div>
+    <button id="retryBtn">다시 하기</button>
+  </div>
+</div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+<script type="module" src="game.js"></script>
+</body>
+</html>
