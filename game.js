@@ -332,8 +332,16 @@ let shake = 0;                      // 화면 흔들림 세기
 
 const $ = (id) => document.getElementById(id);
 
-function readBest() { try { return Number(localStorage.getItem('lumberBest')) || 0; } catch { return 0; } }
-function writeBest(v) { try { localStorage.setItem('lumberBest', String(v)); } catch {} }
+// 최고 기록 = 한 판의 { 나무 수, 데미지 }. 예전 기록(숫자만 저장)도 읽을 수 있게 처리
+function readBest() {
+  try {
+    const raw = localStorage.getItem('lumberBest');
+    if (!raw) return { trees: 0, damage: 0 };
+    const v = JSON.parse(raw);
+    return typeof v === 'number' ? { trees: v, damage: 0 } : { trees: v.trees || 0, damage: v.damage || 0 };
+  } catch { return { trees: 0, damage: 0 }; }
+}
+function writeBest(v) { try { localStorage.setItem('lumberBest', JSON.stringify(v)); } catch {} }
 
 function startGame() {
   initAudio();
@@ -379,12 +387,14 @@ function resumeGame() {
 function endGame() {
   game.running = false;
   $('pauseBtn').classList.add('hidden');
-  const best = readBest();
-  const isNew = game.trees > best && game.trees > 0;
-  if (isNew) writeBest(game.trees);
+  let best = readBest();
+  // 나무를 더 많이 쓰러트렸거나, 같으면 데미지가 더 높을 때 갱신
+  const isNew = game.trees > 0 && (game.trees > best.trees || (game.trees === best.trees && game.damage > best.damage));
+  if (isNew) { best = { trees: game.trees, damage: game.damage }; writeBest(best); }
   $('rTrees').textContent = game.trees + '그루';
   $('rDmg').textContent = game.damage.toLocaleString();
-  $('rBest').textContent = Math.max(best, game.trees) + '그루';
+  $('rBest').textContent = best.trees + '그루';
+  $('rBestDmg').textContent = '데미지 ' + best.damage.toLocaleString();
   $('newbest').textContent = isNew ? '🎉 최고 기록 갱신!' : '';
   sfx.end();
   if (isNew) {

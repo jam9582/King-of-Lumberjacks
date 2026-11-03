@@ -53,8 +53,21 @@
   .card h1 { margin: 0 0 8px; font-size: 34px; }
   .card p { margin: 6px 0; }
   .card .how { margin: 14px 0 20px; font-size: 15px; opacity: .8; }
+  .rules { text-align: left; margin: 14px 0 4px; font-size: 14px; line-height: 1.5; }
+  .rules h3 { font-size: 14px; margin: 12px 0 4px; color: #a9461a; }
+  .rules ul { margin: 0; padding-left: 18px; }
+  .rules ul.marks { list-style: none; padding-left: 0; }
+  .rules ul.marks li { display: flex; align-items: center; gap: 8px; margin: 3px 0; }
+  .mark { display: inline-block; min-width: 38px; text-align: center; font-weight: 900; font-size: 15px; border-radius: 8px; padding: 1px 6px; background: #4a3a2a; }
+  .mark.weak { color: #c9d1d9; }
+  .mark.normal { color: #fff; }
+  .mark.crit { color: #ffd23a; }
+  .rules .tip { margin: 8px 0 0; background: #f5ead6; border-radius: 10px; padding: 6px 10px; }
+  #startScreen .card { max-height: calc(100dvh - 32px); overflow-y: auto; touch-action: pan-y; }
   .result-row { display: flex; justify-content: space-between; gap: 24px; font-size: 18px; margin: 8px 0; }
   .result-row b { font-size: 22px; }
+  .result-row .best { display: flex; flex-direction: column; align-items: flex-end; }
+  .result-row .best small { font-size: 13px; opacity: .7; font-weight: 700; }
   #newbest { color: #e08a00; font-weight: 900; margin-top: 6px; }
   button { font: inherit; font-size: 20px; font-weight: 800; border: 0; border-radius: 14px; padding: 12px 28px; background: #e8743b; color: #fff; cursor: pointer; box-shadow: 0 4px 0 #a9461a; margin-top: 16px; }
   button:active { transform: translateY(3px); box-shadow: 0 1px 0 #a9461a; }
@@ -81,8 +94,23 @@
 <div class="screen" id="startScreen">
   <div class="card">
     <h1>🪓 60초 나무꾼</h1>
-    <p>60초 동안 나무를 최대한 많이 쓰러트리세요!</p>
-    <p class="how">마우스로 도끼를 돌리고 클릭! 폰은 찍을 곳을 터치! (느낌표 3개 = 약점)</p>
+    <p><b>60초 동안 나무를 최대한 많이 쓰러트리세요!</b></p>
+    <div class="rules">
+      <h3>조작</h3>
+      <ul>
+        <li>PC: 마우스로 도끼 방향을 돌리고 클릭</li>
+        <li>폰: 찍고 싶은 쪽을 터치</li>
+        <li>ESC 또는 II 버튼으로 일시정지</li>
+      </ul>
+      <h3>나무 둘레는 8방향으로 나뉘어 있어요</h3>
+      <ul class="marks">
+        <li><span class="mark weak">!</span>단단한 쪽 (1곳): 데미지가 거의 안 들어가요</li>
+        <li><span class="mark normal">!!</span>보통 (6곳): 무난하게 들어가요</li>
+        <li><span class="mark crit">!!!</span>약점 (1곳): 크게 들어가요!</li>
+      </ul>
+      <p class="tip">💡 약점은 단단한 쪽의 <b>정반대</b>에 있어요. 새 나무가 나올 때마다 위치가 바뀌어요.</p>
+      <p class="tip">🏆 점수는 쓰러트린 나무 수! 뒤로 갈수록 나무가 단단해져요.</p>
+    </div>
     <button id="startBtn" disabled>불러오는 중...</button>
   </div>
 </div>
@@ -100,7 +128,7 @@
     <h1>시간 종료!</h1>
     <div class="result-row"><span>쓰러트린 나무</span><b id="rTrees">0</b></div>
     <div class="result-row"><span>데미지 총합</span><b id="rDmg">0</b></div>
-    <div class="result-row"><span>최고 기록</span><b id="rBest">0</b></div>
+    <div class="result-row"><span>최고 기록</span><span class="best"><b id="rBest">0</b><small id="rBestDmg"></small></span></div>
     <div id="newbest"></div>
     <button id="retryBtn">다시 하기</button>
   </div>
