@@ -332,13 +332,15 @@ let shake = 0;                      // 화면 흔들림 세기
 
 const $ = (id) => document.getElementById(id);
 
-// 최고 기록 = 한 판의 { 나무 수, 데미지 }. 예전 기록(숫자만 저장)도 읽을 수 있게 처리
+// 최고 기록 = 한 판의 { 나무 수, 데미지 }
 function readBest() {
   try {
     const raw = localStorage.getItem('lumberBest');
     if (!raw) return { trees: 0, damage: 0 };
     const v = JSON.parse(raw);
-    return typeof v === 'number' ? { trees: v, damage: 0 } : { trees: v.trees || 0, damage: v.damage || 0 };
+    // 첫 버전은 나무 수(숫자)만 저장해서 데미지를 알 수 없음 → 버리고 새로 시작
+    if (typeof v === 'number') { localStorage.removeItem('lumberBest'); return { trees: 0, damage: 0 }; }
+    return { trees: v.trees || 0, damage: v.damage || 0 };
   } catch { return { trees: 0, damage: 0 }; }
 }
 function writeBest(v) { try { localStorage.setItem('lumberBest', JSON.stringify(v)); } catch {} }
@@ -415,7 +417,7 @@ function endGame() {
   if (isNew) writeBest({ trees: game.trees, damage: game.damage });
   $('rTrees').textContent = game.trees + '그루';
   $('rDmg').textContent = game.damage.toLocaleString();
-  // 결과 화면엔 '기존' 최고 기록을 보여줌. 기록이 없으면 '-' (예전 버전 기록은 데미지가 없어서 '-')
+  // 결과 화면엔 '기존' 최고 기록을 보여줌. 기록이 없으면 '-'
   $('rBest').textContent = best.trees ? best.trees + '그루' : '-';
   $('rBestDmg').textContent = best.damage ? best.damage.toLocaleString() : '-';
   $('newbest').textContent = isNew ? '🎉 최고 기록 갱신!' : '';
